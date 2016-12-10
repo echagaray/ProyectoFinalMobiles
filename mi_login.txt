@@ -1,0 +1,107 @@
+package com.example.echagaray.myapplication;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import org.json.JSONArray;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class MainActivity extends AppCompatActivity  {
+
+    Button btnIngresar;
+    EditText usuario,clave;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        usuario = (EditText) findViewById(R.id.edt_usuario);
+        clave = (EditText) findViewById(R.id.edt_contraseña);
+        btnIngresar = (Button) findViewById(R.id.btn_login);
+        btnIngresar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Thread tr = new Thread() {
+                    @Override
+                    //PARA EJECUTAR EL CODIGO EN EL HILO AQUI SE ENVIA USUARIO Y CLAVE
+                    public void run() {
+                        final String resultado = enviarDatosGet(usuario.getText().toString(), clave.getText().toString());
+                        //para trabajar con el activity
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                int r = obtenerDatosJSON(resultado);
+                                if (r > 0) {
+
+                                    Intent i = new Intent(getApplicationContext(),LoginMain2Activity.class);
+
+
+                                    i.putExtra("cod", usuario.getText().toString());
+                                    startActivity(i);
+
+                                } else {
+                                    Toast.makeText(getApplicationContext(), "USUARIO O CLAVE INCORRECTOS", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        });
+                    }
+                };
+                tr.start();
+            }
+
+            //Conexion !!
+            public String enviarDatosGet(String usu, String pas) {
+                URL url = null;
+                String linea = "";
+                int respuesta = 0;
+                StringBuilder resul = null;
+                try {
+                    url = new URL("http://itculiacan.edu.mx/prusoft/Mantenimiento/index.html");
+                    //abrir conexion
+                    HttpURLConnection conection = (HttpURLConnection) url.openConnection();
+                    //respuesta del servidor es INT
+                    respuesta = conection.getResponseCode();
+
+                    //consumir el JSON DE LA RESPUESTA
+                    resul = new StringBuilder();
+
+                    if (respuesta == HttpURLConnection.HTTP_OK) {
+
+                        InputStream in = new BufferedInputStream(conection.getInputStream());
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                        while ((linea = reader.readLine()) != null) {
+                            resul.append(linea);
+                        }
+                    }
+
+                } catch (Exception e) {
+                }
+                return resul.toString();
+            }
+
+            //para saber si el JSON TIENE DATOS
+            public int obtenerDatosJSON(String response) {
+
+                int res = 0;
+                try {
+                    JSONArray json = new JSONArray(response);
+                    if (json.length() > 0)
+                        res = 1;
+                } catch (Exception e) {
+                }
+
+                return res;
+            }
+        });
+    }
+}
